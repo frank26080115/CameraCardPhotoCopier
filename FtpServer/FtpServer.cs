@@ -6,6 +6,7 @@ using System.Text;
 using System.Net.Sockets;
 using System.IO;
 using System.Threading;
+using LogUtility;
 
 /// <summary>
 /// Copied from https://www.codeproject.com/articles/380769/creating-an-ftp-server-in-csharp-with-ipv6-support
@@ -75,22 +76,29 @@ namespace SharpFtpServer
 
         private void HandleAcceptTcpClient(IAsyncResult result)
         {
-            if (_listening)
+            try
             {
-                _listener.BeginAcceptTcpClient(HandleAcceptTcpClient, _listener);
-
-                TcpClient client = _listener.EndAcceptTcpClient(result);
-
-                ClientConnection connection = new ClientConnection(client, this);
-
-                if (new_client_flag == FtpClientStatus.None)
+                if (_listening)
                 {
-                    new_client_flag = FtpClientStatus.Connected;
+                    _listener.BeginAcceptTcpClient(HandleAcceptTcpClient, _listener);
+
+                    TcpClient client = _listener.EndAcceptTcpClient(result);
+
+                    ClientConnection connection = new ClientConnection(client, this);
+
+                    if (new_client_flag == FtpClientStatus.None)
+                    {
+                        new_client_flag = FtpClientStatus.Connected;
+                    }
+
+                    _activeConnections.Add(connection);
+
+                    ThreadPool.QueueUserWorkItem(connection.HandleClient, client);
                 }
-
-                _activeConnections.Add(connection);
-
-                ThreadPool.QueueUserWorkItem(connection.HandleClient, client);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log(LogLevel.Error, ex);
             }
         }
 

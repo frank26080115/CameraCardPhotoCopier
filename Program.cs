@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
 using System.Diagnostics;
+using LogUtility;
 
 namespace CameraCardPhotoCopier
 {
@@ -20,14 +21,22 @@ namespace CameraCardPhotoCopier
                 if (p.Id != Process.GetCurrentProcess().Id)
                 {
                     //p.Kill();
-                    MessageBox.Show("Error: another instance of this app \"" + System.Reflection.Assembly.GetExecutingAssembly().GetName().Name + "\" is already running.", "Errors Occured", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("Error: another instance of this app \"" + System.Reflection.Assembly.GetExecutingAssembly().GetName().Name + "\" is already running.", "Error Occured", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     return;
                 }
             }
 
-            Application.EnableVisualStyles();
-            Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new MyApp());
+            try
+            {
+                Application.EnableVisualStyles();
+                Application.SetCompatibleTextRenderingDefault(false);
+                Application.Run(new MyApp());
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error: " + System.Reflection.Assembly.GetExecutingAssembly().GetName().Name + "\" has encountered a fatal error. Please see the log file.", "Fatal Error Occured", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Logger.Log(LogLevel.Error, ex);
+            }
         }
 
         public static string CardRootDir = "DCIM";

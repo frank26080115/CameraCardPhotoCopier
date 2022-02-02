@@ -952,22 +952,29 @@ namespace SharpFtpServer
 
         private void DoDataConnectionOperation(IAsyncResult result)
         {
-            HandleAsyncResult(result);
-
-            DataConnectionOperation op = result.AsyncState as DataConnectionOperation;
-
-            string response;
-
-            using (NetworkStream dataStream = _dataClient.GetStream())
+            try
             {
-                response = op.Operation(dataStream, op.Arguments);
+                HandleAsyncResult(result);
+
+                DataConnectionOperation op = result.AsyncState as DataConnectionOperation;
+
+                string response;
+
+                using (NetworkStream dataStream = _dataClient.GetStream())
+                {
+                    response = op.Operation(dataStream, op.Arguments);
+                }
+
+                _dataClient.Close();
+                _dataClient = null;
+
+                _controlWriter.WriteLine(response);
+                _controlWriter.Flush();
             }
-
-            _dataClient.Close();
-            _dataClient = null;
-
-            _controlWriter.WriteLine(response);
-            _controlWriter.Flush();
+            catch (Exception ex)
+            {
+                Logger.Log(LogLevel.Error, ex);
+            }
         }
 
         private string RetrieveOperation(NetworkStream dataStream, string pathname)

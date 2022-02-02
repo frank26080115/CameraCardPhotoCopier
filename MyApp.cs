@@ -262,7 +262,7 @@ namespace CameraCardPhotoCopier
             }
 
             progressText = string.Format("Done {0}% ({1:G3} GB : {2} F / {3:G3} GB : {4} F)"
-                , done_bytes100 / total_bytes
+                , total_bytes > 0 ? (done_bytes100 / total_bytes) : 0
                 , Convert.ToDouble(done_bytes / 1024 / 1024) / 1024.0
                 , done_files
                 , Convert.ToDouble(total_bytes / 1024 / 1024) / 1024.0
@@ -288,50 +288,64 @@ namespace CameraCardPhotoCopier
             bool prevResult = false;
             while (true)
             {
-                Thread.Sleep(500); // don't hog CPU
-
-                if (ftpServer.new_client_flag == FtpClientStatus.Transfering)
+                try
                 {
-                    ftpServer.new_client_flag = FtpClientStatus.None; // clear the flag so we don't constantly show annoying notifications
-                    FtpFilePathMap.SpoolUp();
-                    trayIcon.ShowBalloonTip(0, "FTP Photo Transfer", "New FTP connection detected!", ToolTipIcon.Info);
-                }
+                    Thread.Sleep(500); // don't hog CPU
 
-                if (copyworker != null)
-                {
-                    if (copyworker.IsBusy)
+                    if (ftpServer.new_client_flag == FtpClientStatus.Transfering)
                     {
-                        continue;
+                        ftpServer.new_client_flag = FtpClientStatus.None; // clear the flag so we don't constantly show annoying notifications
+                        FtpFilePathMap.SpoolUp();
+                        trayIcon.ShowBalloonTip(0, "FTP Photo Transfer", "New FTP connection detected!", ToolTipIcon.Info);
+                    }
+
+                    if (copyworker != null)
+                    {
+                        if (copyworker.IsBusy)
+                        {
+                            continue;
+                        }
+                    }
+
+                    // enable/disable/show/hide UI elements based on state
+
+                    if (GetDirs())
+                    {
+                        if (prevResult == false) // do not repeatedly show notification if user dismissed previous notification
+                        {
+                            startItem.Enabled = copyworker != null ? (copyworker.IsBusy ? false : true) : true;
+                            bgworker.ReportProgress(1); // dirty hack just to make the main thread show messages/UI
+                        }
+                        prevResult = true;
+                    }
+                    else
+                    {
+                        prevResult = false;
+                        startItem.Enabled = false;
+                    }
+
+                    openFolderItem.Enabled = dest_folder.Length > 0;
+                    if (src_drive != '\0')
+                    {
+                        ejectItem.Enabled = copyworker != null ? (copyworker.IsBusy ? false : true) : true; // do not allow eject if copying is in progress
+                        ejectItem.Text = "Eject \"" + src_drive + ":\\\"";
+                    }
+                    else
+                    {
+                        ejectItem.Enabled = false;
+                        ejectItem.Text = "Eject (none)";
                     }
                 }
-
-                // enable/disable/show/hide UI elements based on state
-
-                if (GetDirs())
+                catch (ThreadAbortException ex)
                 {
-                    if (prevResult == false) // do not repeatedly show notification if user dismissed previous notification
-                    {
-                        startItem.Enabled = copyworker != null ? (copyworker.IsBusy ? false : true) : true;
-                        bgworker.ReportProgress(1); // dirty hack just to make the main thread show messages/UI
-                    }
-                    prevResult = true;
+                    string errmsg = "BG thread abort occured: " + ex.Message;
+                    Logger.Log(LogLevel.Error, errmsg);
                 }
-                else
+                catch (Exception ex)
                 {
-                    prevResult = false;
-                    startItem.Enabled = false;
-                }
-
-                openFolderItem.Enabled = dest_folder.Length > 0;
-                if (src_drive != '\0')
-                {
-                    ejectItem.Enabled = copyworker != null ? (copyworker.IsBusy ? false : true) : true; // do not allow eject if copying is in progress
-                    ejectItem.Text = "Eject \"" + src_drive + ":\\\"";
-                }
-                else
-                {
-                    ejectItem.Enabled = false;
-                    ejectItem.Text = "Eject (none)";
+                    string errmsg = "BG thread exception occured: " + ex.Message;
+                    Logger.Log(LogLevel.Error, errmsg);
+                    MessageBox.Show("Error: " + errmsg, "Errors Occured", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
         }
