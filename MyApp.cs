@@ -34,12 +34,15 @@ namespace CameraCardPhotoCopier
 
         private string progressText = "";
 
-        private FtpServer ftpServer;
+        private FtpServer ftpServer = null;
 
         public MyApp()
         {
-            ftpServer = new FtpServer(Program.FtpPortNum);
-            ftpServer.Start();
+            if (Program.FtpEnabled)
+            {
+                ftpServer = new FtpServer(Program.FtpPortNum);
+                ftpServer.Start();
+            }
 
             infoItem = new MenuItem("");
             infoItem.Enabled = false;
@@ -56,7 +59,7 @@ namespace CameraCardPhotoCopier
                 }),
                 Visible = true
             };
-
+            Program.AppNotifyIcon = trayIcon;
             startItem.Enabled = false;
             ejectItem.Enabled = false;
             openFolderItem.Enabled = false;
@@ -290,13 +293,16 @@ namespace CameraCardPhotoCopier
             {
                 try
                 {
-                    Thread.Sleep(500); // don't hog CPU
+                    Thread.Sleep(Program.ThreadSleepTime); // don't hog CPU
 
-                    if (ftpServer.new_client_flag == FtpClientStatus.Transfering)
+                    if (Program.FtpEnabled && ftpServer != null)
                     {
-                        ftpServer.new_client_flag = FtpClientStatus.None; // clear the flag so we don't constantly show annoying notifications
-                        FtpFilePathMap.SpoolUp();
-                        trayIcon.ShowBalloonTip(0, "FTP Photo Transfer", "New FTP connection detected!", ToolTipIcon.Info);
+                        if (ftpServer.new_client_flag == FtpClientStatus.Transfering)
+                        {
+                            ftpServer.new_client_flag = FtpClientStatus.None; // clear the flag so we don't constantly show annoying notifications
+                            FtpFilePathMap.SpoolUp();
+                            trayIcon.ShowBalloonTip(0, "FTP Photo Transfer", "New FTP connection detected!", ToolTipIcon.Info);
+                        }
                     }
 
                     if (copyworker != null)
@@ -345,7 +351,16 @@ namespace CameraCardPhotoCopier
                 {
                     string errmsg = "BG thread exception occured: " + ex.Message;
                     Logger.Log(LogLevel.Error, errmsg);
-                    MessageBox.Show("Error: " + errmsg, "Errors Occured", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    errmsg = errmsg.ToLower();
+                    bool showDialog = true;
+                    if (errmsg.Contains("drive") && errmsg.Contains("exist"))
+                    {
+                        showDialog = false;
+                    }
+                    if (showDialog)
+                    {
+                        MessageBox.Show("Error: " + errmsg, "Errors Occured", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    }
                 }
             }
         }
@@ -364,7 +379,7 @@ namespace CameraCardPhotoCopier
             List<DriveInfo> drivesThatMatter = new List<DriveInfo>();
             foreach (DriveInfo d in drvNfos)
             {
-                if (d.Name.ToUpper()[0] != 'C') // ignore C drive, which is internal, this app is only meant for externa drives
+                if (d.Name.ToUpper()[0] != 'C') // ignore C drive, which is internal, this app is only meant for external drives
                 {
                     drivesThatMatter.Add(d);
                 }
@@ -603,6 +618,14 @@ namespace CameraCardPhotoCopier
             trayIcon.Visible = false;
             Application.Exit();
         }
+
+#if false
+        [System.Security.Permissions.PermissionSet(System.Security.Permissions.SecurityAction.Demand, Name = "FullTrust")]
+        protected override void WndProc(ref Message m)
+        {
+            base.WndProc(ref m);
+        }
+#endif
 
         protected override void Dispose(bool disposing)
         {

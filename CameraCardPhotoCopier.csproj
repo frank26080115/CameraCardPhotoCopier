@@ -51,8 +51,7 @@
     <Compile Include="FtpServer\ClientConnection.cs" />
     <Compile Include="FtpServer\FtpFilePathMap.cs" />
     <Compile Include="FtpServer\FtpServer.cs" />
-    <Compile Include="FtpServer\User.cs" />
-    <Compile Include="FtpServer\UserStore.cs" />
+    <Compile Include="IniFile.cs" />
     <Compile Include="Logger.cs" />
     <Compile Include="MyApp.cs" />
     <Compile Include="Program.cs" />

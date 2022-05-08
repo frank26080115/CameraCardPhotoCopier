@@ -130,9 +130,10 @@ namespace SharpFtpServer
         private DataConnectionType _dataConnectionType = DataConnectionType.Active;
         private FileStructureType _fileStructureType = FileStructureType.File;
 
-        private string _username;
-        private string _root;
-        private string _currentDirectory;
+        private string _username = null;
+        private string _root = null;
+        private string _currentDirectory = null;
+        private bool _loggedIn = false;
         private IPEndPoint _dataEndpoint;
         private IPEndPoint _remoteEndPoint;
 
@@ -140,8 +141,6 @@ namespace SharpFtpServer
         private SslStream _sslStream;
 
         private string _clientIP;
-
-        private User _currentUser;
 
         private List<string> _validCommands;
 
@@ -155,7 +154,7 @@ namespace SharpFtpServer
 
         private string CheckUser()
         {
-            if (_currentUser == null)
+            if (_loggedIn == false)
             {
                 return "530 Not logged in";
             }
@@ -234,7 +233,7 @@ namespace SharpFtpServer
                                 response = "221 Service closing control connection";
                                 break;
                             case "REIN":
-                                _currentUser = null;
+                                _loggedIn = false;
                                 _username = null;
                                 _passiveListener = null;
                                 _dataClient = null;
@@ -479,21 +478,23 @@ namespace SharpFtpServer
 
         private string Password(string password)
         {
-            _currentUser = UserStore.Validate(_username, password);
-
-            if (_currentUser != null)
+            if (_username == Program.FtpUsername && password == Program.FtpPassword)
             {
-                _root = _currentUser.HomeDir;
+                _root = Program.FtpHomeDir;
                 if (string.IsNullOrWhiteSpace(_root))
                 {
                     _root = FtpFilePathMap.GetRoot();
                 }
                 _currentDirectory = _root;
-
+                _loggedIn = true;
                 return "230 User logged in";
             }
             else
             {
+                _username = null;
+                _root = null;
+                _currentDirectory = null;
+                _loggedIn = false;
                 return "530 Not logged in";
             }
         }
