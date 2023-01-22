@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -21,66 +22,55 @@ namespace BucketDesktop
 
         public static string FormatFileSize(long[] fileSizes)
         {
-            string shortest = string.Empty;
-            for (int i = 0; i <= 3; i++)
+            for (int i = 3; i >= 0; i--)
             {
                 string str = "";
                 var divider = Math.Pow(1024, i);
+                bool can_use = false;
                 for (int j = 0; j < fileSizes.Length; j++)
                 {
                     double x = Convert.ToDouble(fileSizes[j]) / Convert.ToDouble(divider);
-                    if (x >= 1000)
+                    if ((x >= 1 && i < 3) || x >= 10)
                     {
-                        str += Convert.ToInt64(Math.Round(x)).ToString();
-                    }
-                    else if (x >= 100)
-                    {
-                        str += x.ToString("0.0").TrimEnd('0').TrimEnd('.');
-                    }
-                    else if (x >= 10)
-                    {
-                        str += x.ToString("0.0").TrimEnd('0').TrimEnd('.');
-                    }
-                    else if (x >= 1)
-                    {
-                        str += x.ToString("0.0").TrimEnd('0').TrimEnd('.');
-                    }
-                    else
-                    {
-                        str += x.ToString("0.000").TrimEnd('0').TrimEnd('.');
-                    }
-                    if (j != fileSizes.Length - 1)
-                    {
-                        str += " / ";
+                        can_use = true;
+                        break;
                     }
                 }
+                if (can_use)
+                {
+                    for (int j = 0; j < fileSizes.Length; j++)
+                    {
+                        double x = Convert.ToDouble(fileSizes[j]) / Convert.ToDouble(divider);
+                        str += x.ToString("0.0").TrimEnd('0').TrimEnd('.');
+                        if (j != fileSizes.Length - 1)
+                        {
+                            str += " / ";
+                        }
+                    }
 
-                switch (i)
-                {
-                    case 0:
-                        str += " B";
-                        break;
-                    case 1:
-                        str += " KB";
-                        break;
-                    case 2:
-                        str += " MB";
-                        break;
-                    case 3:
-                        str += " GB";
-                        break;
-                }
-                while (str.Contains("  "))
-                {
-                    str = str.Replace("  ", " ");
-                }
-
-                if (shortest.Length == 0 || str.Length <= shortest.Length)
-                {
-                    shortest = str;
+                    switch (i)
+                    {
+                        case 0:
+                            str += " bytes";
+                            break;
+                        case 1:
+                            str += " KB";
+                            break;
+                        case 2:
+                            str += " MB";
+                            break;
+                        case 3:
+                            str += " GB";
+                            break;
+                    }
+                    while (str.Contains("  "))
+                    {
+                        str = str.Replace("  ", " ");
+                    }
+                    return str;
                 }
             }
-            return shortest;
+            return string.Empty;
         }
 
         public static string FormatFileSize(long fileSize)
@@ -96,6 +86,14 @@ namespace BucketDesktop
             fileSizes[0] = numer;
             fileSizes[1] = denom;
             return FormatFileSize(fileSizes);
+        }
+
+        [DllImport("msvcrt.dll", CallingConvention = CallingConvention.Cdecl)]
+        private static extern IntPtr memcmp(byte[] b1, byte[] b2, IntPtr count);
+        public static int MemcmpCompare(byte[] b1, byte[] b2, int len)
+        {
+            IntPtr retval = memcmp(b1, b2, new IntPtr(len));
+            return retval.ToInt32();
         }
 
         public static string DestPath = null;

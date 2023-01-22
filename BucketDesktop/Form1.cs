@@ -224,6 +224,11 @@ namespace BucketDesktop
 
             Dictionary<string, string> toBeCopied = new Dictionary<string, string>();
 
+            if (Directory.Exists(Program.DestPath) == false)
+            {
+                Directory.CreateDirectory(Program.DestPath);
+            }
+
             DirectoryInfo srcRoot = new DirectoryInfo(txtSource.Text);
             DirectoryInfo destRoot = new DirectoryInfo(Program.DestPath);
             var srcDirs = srcRoot.GetDirectories();
@@ -348,6 +353,8 @@ namespace BucketDesktop
 
                     lastCopyDir = Path.GetDirectoryName(i.Value);
 
+                    int chunk = 1024 * 1024 * 25;
+
                     using (FileStream inStream = File.OpenRead(i.Key))
                     {
                         using (FileStream outStream = File.OpenWrite(i.Value))
@@ -358,7 +365,6 @@ namespace BucketDesktop
                                 break;
                             }
 
-                            int chunk = 1024 * 1024 * 25;
                             byte[] buffer = new byte[chunk];
                             int r = 1;
                             while (r > 0 && inStream.Position < inStream.Length && deletePartial == false)
@@ -374,6 +380,33 @@ namespace BucketDesktop
                             }
                         }
                     }
+
+                    if (deletePartial == false)
+                    {
+                        // compare the byte contents of both files
+                        // only compare a small portion to catch bad transfers while maintaining copy speed
+                        using (FileStream inStream = File.OpenRead(i.Key))
+                        {
+                            using (FileStream outStream = File.OpenRead(i.Value))
+                            {
+                                byte[] buffer1 = new byte[chunk];
+                                byte[] buffer2 = new byte[chunk];
+                                int r1 = 1, r2 = 1;
+                                while (r1 > 0 && r2 > 0 && inStream.Position < (inStream.Length / 20))
+                                {
+                                    r1 = inStream.Read(buffer1, 0, buffer1.Length);
+                                    r2 = outStream.Read(buffer2, 0, buffer2.Length);
+                                    if (Program.MemcmpCompare(buffer1, buffer2, r1) != 0 || r1 != r2)
+                                    {
+                                        hasErrors += 1;
+                                        Logger.Log(LogLevel.Error, "During Copy \"" + i.Key + "\" to \"" + i.Value + "\", content mismatch detected");
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+
                     if (deletePartial && File.Exists(i.Value))
                     {
                         File.Delete(i.Value);
@@ -414,7 +447,7 @@ namespace BucketDesktop
         {
             threadDone = true;
 
-            if (srcPath != null && chkAutoEject.Checked && hasErrors <= 0)
+            if (srcPath != null && chkAutoEject.Checked && hasErrors <= 0 && startCopy)
             {
                 EjectDisk();
             }
