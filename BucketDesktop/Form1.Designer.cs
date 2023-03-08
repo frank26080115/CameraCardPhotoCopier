@@ -168,6 +168,7 @@
             // ejectorThread
             // 
             this.ejectorThread.WorkerReportsProgress = true;
+            this.ejectorThread.WorkerSupportsCancellation = true;
             this.ejectorThread.DoWork += new System.ComponentModel.DoWorkEventHandler(this.ejectorThread_DoWork);
             this.ejectorThread.ProgressChanged += new System.ComponentModel.ProgressChangedEventHandler(this.ejectorThread_ProgressChanged);
             // 

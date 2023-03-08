@@ -465,9 +465,13 @@ namespace BucketDesktop
         {
             if (bkgndWorker.IsBusy)
             {
-                bkgndWorker.CancelAsync();
                 for (int i = 0; i < 30 && bkgndWorker.IsBusy && threadDone == false; i++)
                 {
+                    try
+                    {
+                        bkgndWorker.CancelAsync();
+                    }
+                    catch { }
                     Thread.Sleep(1000);
                 }
             }
@@ -477,9 +481,13 @@ namespace BucketDesktop
         {
             if (ejectorThread.IsBusy)
             {
-                ejectorThread.CancelAsync();
                 for (int i = 0; i < 30 && ejectorThread.IsBusy; i++)
                 {
+                    try
+                    {
+                        ejectorThread.CancelAsync();
+                    }
+                    catch { }
                     Thread.Sleep(1000);
                 }
             }
