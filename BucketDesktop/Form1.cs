@@ -48,6 +48,7 @@ namespace BucketDesktop
         {
             InitializeComponent();
             notifyIcon.Icon = this.Icon;
+            notifyIcon.Text = Application.ProductName;
             this.Text = Application.ProductName;
             txtDestination.Text = Program.DestPath = lastCopyDir = destPath = GetDestDir();
             if (destPath == null)
@@ -506,7 +507,7 @@ namespace BucketDesktop
         private void ejectorThread_DoWork(object sender, DoWorkEventArgs e)
         {
             string drive = Path.GetPathRoot(txtSource.Text).Substring(0, 1);
-            while (Directory.Exists(Path.GetPathRoot(txtSource.Text)))
+            for (int retries = 0; retries < 3 && Directory.Exists(Path.GetPathRoot(txtSource.Text)); retries++)
             {
                 if (e.Cancel || ejectorThread.CancellationPending)
                 {
@@ -515,7 +516,14 @@ namespace BucketDesktop
                 DiskUtils.Eject(drive);
                 Thread.Sleep(500);
             }
-            ejectorThread.ReportProgress(1);
+            if (Directory.Exists(Path.GetPathRoot(txtSource.Text)) == false)
+            {
+                ejectorThread.ReportProgress(1);
+            }
+            else
+            {
+                ejectorThread.ReportProgress(2);
+            }
         }
 
         private void ejectorThread_ProgressChanged(object sender, ProgressChangedEventArgs e)
@@ -524,6 +532,12 @@ namespace BucketDesktop
             {
                 txtSource.Text = "Ejected";
                 ejectItem.Text = "Already Ejected";
+                btnEject.Enabled = false;
+            }
+            else if (e.ProgressPercentage == 2)
+            {
+                txtSource.Text = "Err Ej";
+                ejectItem.Text = "Error Ejecting";
                 btnEject.Enabled = false;
             }
         }
